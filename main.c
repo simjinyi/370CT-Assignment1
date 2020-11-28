@@ -5,6 +5,18 @@
 #include <stdlib.h>
 #include <time.h>
 
+
+// Modify here
+#define WASHER_ALTERNATE 1
+#define DRYER_ALTERNATE 1
+
+#define MAX_GLASS_STORAGE_SIZE 0
+
+#define NUM_CLOTH 1
+#define NUM_SINK 1
+// End Modify
+
+
 #define WASHER 1
 #define DRYER 0
 
@@ -29,16 +41,6 @@ sem_t semWasherMutex, semDryerMutex;
 int totalWasher = 0, totalDryer = 0;
 int currentWasher = 0, currentDryer = 0;
 int washerCounter = 0, dryerCounter = 0;
-
-// Modify here
-#define WASHER_ALTERNATE 1
-#define DRYER_ALTERNATE 0
-
-#define MAX_GLASS_STORAGE_SIZE 0
-
-#define NUM_CLOTH 1
-#define NUM_SINK 1
-// End Modify
 
 int main() {
 
@@ -109,7 +111,7 @@ void* washer(void* information) {
         }
 
         sem_post(&semSink);
-        usleep(100 * 1000);
+        usleep(600 * 1000);
     }
 }
 
