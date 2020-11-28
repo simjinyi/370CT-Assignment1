@@ -219,6 +219,11 @@ int initializeWorkers(struct WorkerInformation* workerInformation, int size) {
 
     // Assign the ID and leading space (for output)
     for (int i = 0; i < size; i++) {
+
+        // Ensure that the productivity is not lesser than 1
+        if (workerInformation[i].productivity < 1)
+            return -1;
+            
         workerInformation[i].id = workerInformation[i].type == WASHER ? washerId++ : dryerId++;
         workerInformation[i].leadingSpace = i * LEADING_SPACE;
     }
