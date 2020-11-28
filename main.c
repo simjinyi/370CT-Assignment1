@@ -4,13 +4,17 @@
 #include <semaphore.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
+
+// Please modify this section as required
 // Define the maximum glasses that can be held in the storage, 0 denotes unlimited
-#define MAX_GLASS_STORAGE_SIZE 5
+#define MAX_GLASS_STORAGE_SIZE 0
 
-// Define the resources
+// Define the resources availability
 #define CLOTH_NUM 1
 #define SINK_NUM 1
+
 
 // Define the alias for the worker types
 #define WASHER 0
@@ -26,27 +30,22 @@ struct WorkerInformation {
 void* washer(void*);
 void* dryer(void*);
 
-// Helper function prototypes
-int getSemaphoreValue(sem_t*);
+void printStorageInformation(short);
 
-
-// Semaphores (HERE!)
+// Semaphores declaration
 sem_t semGlassesStorageFull;
 
 #if MAX_GLASS_STORAGE_SIZE > 0
+// Required to ensure that the storage space does not exceed
 sem_t semGlassesStorageEmpty;
 #endif
 
-sem_t semCloth;
-sem_t semSink;
+sem_t semSink;  // Needed to cater for situations when there is more than one washer
+sem_t semCloth; // Needed to ensure mutual exclusion between the dryers
 
-sem_t semMutex;
-
-
-// HERE!
+// Counters to print out the index of the glasses
 int washerCounter = 0;
 int dryerCounter = 0;
-
 
 int main() {
 
@@ -55,9 +54,9 @@ int main() {
 
     // Contains the information of all the workers and the total number of workers in the bar
     const struct WorkerInformation workers[] = {
-        { "Ashok", 1, WASHER, 25 },
-        { "John", 2, DRYER, 25 },
-        { "Stan", 1, DRYER, 25 }};
+        { "Ashok", 1, WASHER, 0 },
+        { "John", 2, DRYER, 30 },
+        { "Stan", 1, DRYER, 60 }};
     const int NUM_WORKERS = sizeof(workers) / sizeof(workers[0]);
 
     // Create an array of worker threads
@@ -67,7 +66,6 @@ int main() {
     sem_init(&semGlassesStorageFull, 0, 0);     // Initialize to 0 as there's no glass available in the beginning
     sem_init(&semCloth, 0, 1);                  // Initialize to 1 as there's one piece of cloth available
     sem_init(&semSink, 0, 1);                   // Initialize to 1 as there's one sink available
-    sem_init(&semMutex, 0, 1);                  // Initialize to 1 to serve as a mutex
 
 
 #if MAX_GLASS_STORAGE_SIZE > 0
@@ -75,16 +73,13 @@ int main() {
     sem_init(&semGlassesStorageEmpty, 0, MAX_GLASS_STORAGE_SIZE);
 #endif
 
-
     printf("Program Started, Glass Storage Space: %d (0 Denotes Unlimited)\n\n", MAX_GLASS_STORAGE_SIZE);
-
 
     // Create a thread for each of the workers
     for (int i = 0; i < NUM_WORKERS; i++)
         pthread_create(workerThreads + i, NULL, (workers[i].type ? dryer : washer), (void*) (workers + i));
 
     // Optional, since the program will not terminate voluntarily
-    // But still added for a complete program sake
     for (int i = 0; i < NUM_WORKERS; i++)
         pthread_join(workerThreads[i], NULL);
 
@@ -98,7 +93,11 @@ void* washer(void* information) {
 
     // Infinite loop to ensure that the process continues
     for (;;) {
+        
+        // Wait for a sink to become available
+        sem_wait(&semSink);
 
+        // Loop through the productivity
         for (int i = 0; i < workerInformation->productivity; i++) {
 
 #if MAX_GLASS_STORAGE_SIZE > 0
@@ -106,13 +105,18 @@ void* washer(void* information) {
             sem_wait(&semGlassesStorageEmpty);
 #endif
 
-            // A random delay between 0 to 3 seconds to indicate the washing operation
-            sleep(rand() % 3);
-            printf("%s washes glass %d\n", workerInformation->name, ++washerCounter);
+            printf("%*s%s washes glass %d\n", workerInformation->printSpace, "", workerInformation->name, ++washerCounter);
 
             // Signals that the storage is now one more space filled
             sem_post(&semGlassesStorageFull);
-        }        
+
+            printStorageInformation(workerInformation->printSpace);
+        } 
+
+        // Release the sink
+        sem_post(&semSink);
+        sleep(rand() % 2 + 1);
+        // usleep(500 * 1000);
     }
 }
 
@@ -124,35 +128,34 @@ void* dryer(void* information) {
     // Infinite loop to ensure that the process continues
     for (;;) {
 
+        // Wait for a cloth to become available
         sem_wait(&semCloth);
 
-        int max = getSemaphoreValue(&semGlassesStorageFull);
-        max = max < workerInformation->productivity ? max : workerInformation->productivity;
+        // Loop through the productivity
+        for (int i = 0; i < workerInformation->productivity; i++) {
 
-        // Wait until at least one glass becomes available (finished washing)
-        for (int i = 0; i < max; i++) {
-
+            // Wait until at least one glass becomes available (finished washing)
             sem_wait(&semGlassesStorageFull);           
 
-            // A random delay between 0 to 3 seconds to indicate the drying operation
-            sleep(rand() % 3);
-            printf("%s dries glass %d\n", workerInformation->name, ++dryerCounter);
+            printf("%*s%s dries glass %d\n", workerInformation->printSpace, "", workerInformation->name, ++dryerCounter);
 
 #if MAX_GLASS_STORAGE_SIZE > 0
             // Signals that the storage is now one less space filled if there's a limitation on the glass storage space
             sem_post(&semGlassesStorageEmpty);
 #endif      
+
+            printStorageInformation(workerInformation->printSpace);
         }
 
+        // Release the cloth
         sem_post(&semCloth);
+        sleep(rand() % 2 + 1);
     }
 }
 
-int getSemaphoreValue(sem_t* semaphore) {
-    if (!semaphore)
-        return -1;
+void printStorageInformation(short printSpace) {
 
-    int temp = 0;
-    sem_getvalue(semaphore, &temp);
-    return temp;
+    int temp = -1;
+    sem_getvalue(&semGlassesStorageFull, &temp);
+    printf("%*sStorage Space Filled: %d\n\n", printSpace, "", temp);
 }
