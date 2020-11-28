@@ -32,7 +32,7 @@ int washerCounter = 0, dryerCounter = 0;
 
 // Modify here
 #define WASHER_ALTERNATE 1
-#define DRYER_ALTERNATE 1
+#define DRYER_ALTERNATE 0
 
 #define MAX_GLASS_STORAGE_SIZE 0
 
@@ -49,7 +49,10 @@ int main() {
     struct WorkerInformation workers[] = {
         { "Ashok", 1, WASHER, 0 },
         { "Stan", 1, DRYER, 30 },
-        { "John", 2, DRYER, 60 }};
+        { "John", 2, DRYER, 60 },
+    };
+    // End modify
+
     const int NUM_WORKERS = sizeof(workers) / sizeof(workers[0]);
 
     if (retVal = initializeWorkers(workers, NUM_WORKERS)) {
