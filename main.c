@@ -256,6 +256,10 @@ int initializeSemaphores() {
     retVal += sem_init(&semGlassesStorageFull, 0, 0);               
     retVal += sem_init(&semGlassesStorageEmpty, 0, MAX_GLASS_STORAGE_SIZE);
 
+    // Ensure that there is at least one cloth and sink available
+    if (NUM_CLOTH < 1 || NUM_SINK < 1)
+        return -1;
+
     // Initialize semCloth to the number of cloths available
     // Initialize semSink to the number of sinks available
     retVal += sem_init(&semCloth, 0, NUM_CLOTH);                  
